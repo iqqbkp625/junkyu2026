@@ -547,13 +547,28 @@
     });
 
     (async () => {
+    try {
         const { data: { session } } = await db.auth.getSession();
         if (session) {
-            authPanel.classList.add('hidden'); appPanel.classList.remove('hidden');
-            await loadCloudData();
+            console.log('初始化：已登录', session.user.email);
+            authPanel.classList.add('hidden');
+            appPanel.classList.remove('hidden');
+            try {
+                await loadCloudData();
+            } catch (e) {
+                console.warn('初始化加载云端数据失败', e);
+            }
             await updateUI();
+        } else {
+            console.log('初始化：未登录，显示登录面板');
         }
-    })();
+    } catch (e) {
+        console.error('初始化失败', e);
+        // 即使出错也要显示登录面板
+        authPanel.classList.remove('hidden');
+    }
+})();
+    
 </script>
 </body>
 </html>
