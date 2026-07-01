@@ -537,14 +537,23 @@
         appPanel.classList.add('hidden'); authPanel.classList.remove('hidden');
     });
 
+
     db.auth.onAuthStateChange(async (event, session) => {
-        if (session) {
-            authPanel.classList.add('hidden'); appPanel.classList.remove('hidden');
-            await loadCloudData(); await updateUI();
-        } else {
-            appPanel.classList.add('hidden'); authPanel.classList.remove('hidden');
+    console.log('认证状态变化:', event, session?.user?.email);
+    if (session) {
+        authPanel.classList.add('hidden');
+        appPanel.classList.remove('hidden');
+        try {
+            await loadCloudData();
+        } catch (e) {
+            console.warn('状态变化时加载数据失败', e);
         }
-    });
+        await updateUI();
+    } else {
+        appPanel.classList.add('hidden');
+        authPanel.classList.remove('hidden');
+    }
+});
 
     (async () => {
     try {
