@@ -181,7 +181,7 @@
     </div>
 </div>
 
-<!-- 设置面板（默认隐藏） -->
+<!-- 设置面板 -->
 <div id="settingsOverlay" class="settings-overlay hidden">
     <div class="settings-panel">
         <button class="close-btn" id="closeSettingsBtn">✕</button>
@@ -212,8 +212,8 @@
 
 <script>
     // ========== 请替换为你的 Supabase 信息 ==========
-    const SUPABASE_URL = 'https://jljqqaooecepwvxcxkdy.supabase.co';          // ← 替换
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsanFxYW9vZWNlcHd2eGN4a2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MTk5NzMsImV4cCI6MjA5ODQ5NTk3M30.8IygRIdcfGKva5Fzo0TuEizkkuFgtN1T2eM9avBcioc'; // ← 替换
+    const SUPABASE_URL = 'https://jljqqaooecepwvxcxkdy.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsanFxYW9vZWNlcHd2eGN4a2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MTk5NzMsImV4cCI6MjA5ODQ5NTk3M30.8IygRIdcfGKva5Fzo0TuEizkkuFgtN1T2eM9avBcioc';
 
     if (typeof window.supabase === 'undefined') {
         alert('Supabase SDK 加载失败');
@@ -264,34 +264,44 @@
         }
     }
 
-    // ========== 云端数据 ==========
+    // ========== 云端数据（带错误处理） ==========
     async function loadCloudData() {
-        const { data: { user } } = await db.auth.getUser();
-        if (!user) return null;
-        const { data, error } = await db.from('journal').select('*').eq('user_id', user.id).maybeSingle();
-        if (error) { console.error(error); return null; }
-        if (data) {
-            local.checkin_dates = data.checkin_dates || [];
-            local.diary = data.diary || {};
-            local.specials = data.specials || {};
-            local.profile = data.profile || { nickname: '', subtitle: 'One leaf a day.' };
-            local.bg = data.bg || 'default';
-        } else {
-            await db.from('journal').insert([{ user_id: user.id }]);
+        try {
+            const { data: { user } } = await db.auth.getUser();
+            if (!user) return null;
+            const { data, error } = await db.from('journal').select('*').eq('user_id', user.id).maybeSingle();
+            if (error) throw error;
+            if (data) {
+                local.checkin_dates = data.checkin_dates || [];
+                local.diary = data.diary || {};
+                local.specials = data.specials || {};
+                local.profile = data.profile || { nickname: '', subtitle: 'One leaf a day.' };
+                local.bg = data.bg || 'default';
+            } else {
+                await db.from('journal').insert([{ user_id: user.id }]);
+            }
+            return local;
+        } catch (err) {
+            console.warn('加载云端数据失败，使用本地默认数据', err);
+            return local; // 即使失败也返回默认数据，确保界面可用
         }
-        return local;
     }
+
     async function saveCloudData() {
-        const { data: { user } } = await db.auth.getUser();
-        if (!user) return;
-        await db.from('journal').update({
-            checkin_dates: local.checkin_dates,
-            diary: local.diary,
-            specials: local.specials,
-            profile: local.profile,
-            bg: local.bg,
-            updated_at: new Date()
-        }).eq('user_id', user.id);
+        try {
+            const { data: { user } } = await db.auth.getUser();
+            if (!user) return;
+            await db.from('journal').update({
+                checkin_dates: local.checkin_dates,
+                diary: local.diary,
+                specials: local.specials,
+                profile: local.profile,
+                bg: local.bg,
+                updated_at: new Date()
+            }).eq('user_id', user.id);
+        } catch (err) {
+            console.warn('保存云端数据失败', err);
+        }
     }
 
     // ========== 工具 ==========
@@ -317,7 +327,7 @@
         else if (bg === 'forest') body.style.background = 'linear-gradient(135deg, #e9f0e5, #d5e4d1)';
         else if (bg === 'peach') body.style.background = 'linear-gradient(135deg, #f9f3f0, #fce4d6)';
         else if (bg === 'cream') body.style.backgroundColor = '#fdfdf0';
-        else if (bg.startsWith('data:image')) {
+        else if (bg && bg.startsWith('data:image')) {
             body.style.backgroundImage = `url(${bg})`;
             body.style.backgroundSize = 'cover';
             body.style.backgroundPosition = 'center';
@@ -354,6 +364,7 @@
 
     async function updateUI() {
         const total = daysSinceStart(); const count = local.checkin_dates.length;
+        // 天数
         document.getElementById('dayNumber').textContent = total;
         document.getElementById('dayLabelNum').textContent = total;
         // 版头
@@ -539,7 +550,8 @@
         const { data: { session } } = await db.auth.getSession();
         if (session) {
             authPanel.classList.add('hidden'); appPanel.classList.remove('hidden');
-            await loadCloudData(); await updateUI();
+            await loadCloudData();
+            await updateUI();
         }
     })();
 </script>
