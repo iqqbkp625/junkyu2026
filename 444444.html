@@ -390,6 +390,105 @@
     });
 
     // 设置面板相关（保持原逻辑，省略具体实现，你已有完整代码）
+        // ==================== 设置面板 ====================
+    const settingsOverlay = document.getElementById('settingsOverlay');
+    
+    // 打开设置面板
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+        settingsOverlay.classList.remove('hidden');
+        document.getElementById('nicknameInput').value = local.profile.nickname;
+        document.getElementById('subtitleInput').value = local.profile.subtitle;
+        renderSpecialList();
+        updateBgSelection();
+    });
+
+    // 关闭设置面板
+    document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+        settingsOverlay.classList.add('hidden');
+    });
+    // 点击遮罩层关闭
+    settingsOverlay.addEventListener('click', (e) => {
+        if (e.target === settingsOverlay) settingsOverlay.classList.add('hidden');
+    });
+
+    // 背景切换选中状态
+    function updateBgSelection() {
+        document.querySelectorAll('.bg-option').forEach(o => {
+            o.classList.toggle('selected', o.dataset.bg === local.bg);
+        });
+    }
+
+    // 预设背景点击
+    document.querySelectorAll('.bg-option').forEach(opt => {
+        opt.addEventListener('click', async () => {
+            const bg = opt.dataset.bg;
+            local.bg = bg;
+            applyBackground(bg);
+            await saveCloudData();
+            updateBgSelection();
+        });
+    });
+
+    // 上传自定义背景
+    document.getElementById('bgUpload').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async () => {
+            local.bg = reader.result;
+            applyBackground(local.bg);
+            await saveCloudData();
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // 恢复默认背景
+    document.getElementById('resetBgBtn').addEventListener('click', async () => {
+        local.bg = 'default';
+        applyBackground('default');
+        await saveCloudData();
+        updateBgSelection();
+    });
+
+    // 保存昵称和副标题
+    document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+        local.profile.nickname = document.getElementById('nicknameInput').value.trim();
+        local.profile.subtitle = document.getElementById('subtitleInput').value.trim();
+        await saveCloudData();
+        await renderMainUI();  // 更新主界面版头
+        alert('版头已更新');
+    });
+
+    // 渲染特别寄语列表
+    function renderSpecialList() {
+        const list = document.getElementById('specialList');
+        list.innerHTML = Object.entries(local.specials).map(([date, msg]) => `
+            <div style="display:flex; justify-content:space-between; margin:0.3rem 0;">
+                <span>${date} - ${msg}</span>
+                <button data-date="${date}" class="del-special" style="width:auto; background:none; color:#c44; font-size:1.2rem;">🗑️</button>
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.del-special').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const date = e.target.dataset.date;
+                delete local.specials[date];
+                await saveCloudData();
+                renderSpecialList();
+            });
+        });
+    }
+
+    // 添加特别寄语
+    document.getElementById('addSpecialBtn').addEventListener('click', async () => {
+        const date = document.getElementById('specialDate').value;
+        const msg = document.getElementById('specialMessage').value.trim();
+        if (!date || !msg) return alert('请填写日期和寄语');
+        local.specials[date] = msg;
+        await saveCloudData();
+        renderSpecialList();
+        document.getElementById('specialMessage').value = '';
+    });
 
     // ==================== 启动 ====================
     // 监听状态变化
