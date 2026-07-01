@@ -211,7 +211,7 @@
 </div>
 
 <script>
-    // ========== 请替换为你的 Supabase 信息 ==========
+    // ========== 你的 Supabase 配置 ==========
     const SUPABASE_URL = 'https://jljqqaooecepwvxcxkdy.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsanFxYW9vZWNlcHd2eGN4a2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MTk5NzMsImV4cCI6MjA5ODQ5NTk3M30.8IygRIdcfGKva5Fzo0TuEizkkuFgtN1T2eM9avBcioc';
 
@@ -264,7 +264,7 @@
         }
     }
 
-    // ========== 云端数据（带错误处理） ==========
+    // ========== 云端数据 ==========
     async function loadCloudData() {
         try {
             const { data: { user } } = await db.auth.getUser();
@@ -278,12 +278,17 @@
                 local.profile = data.profile || { nickname: '', subtitle: 'One leaf a day.' };
                 local.bg = data.bg || 'default';
             } else {
-                await db.from('journal').insert([{ user_id: user.id }]);
+                // 新用户首次创建记录，单独捕获错误
+                try {
+                    await db.from('journal').insert([{ user_id: user.id }]);
+                } catch (insertErr) {
+                    console.warn('创建用户记录失败（可能已存在）', insertErr);
+                }
             }
             return local;
         } catch (err) {
             console.warn('加载云端数据失败，使用本地默认数据', err);
-            return local; // 即使失败也返回默认数据，确保界面可用
+            return local;
         }
     }
 
@@ -362,37 +367,42 @@
         document.getElementById('miniCalendar').innerHTML = html;
     }
 
+    // ★ 重要：updateUI 增加错误保护，确保即使某处报错也能尽可能渲染
     async function updateUI() {
-        const total = daysSinceStart(); const count = local.checkin_dates.length;
-        // 天数
-        document.getElementById('dayNumber').textContent = total;
-        document.getElementById('dayLabelNum').textContent = total;
-        // 版头
-        document.getElementById('nickDisplay').textContent = local.profile.nickname || 'Growing Together';
-        document.getElementById('subDisplay').textContent = local.profile.subtitle || 'One leaf a day.';
-        // 进度条
-        const percent = total>0 ? Math.min(100, (count/total)*100) : 0;
-        document.getElementById('progressFill').style.width = percent + '%';
-        document.getElementById('progressText').textContent = `${count} / ${total} 天`;
-        // 生日
-        const bday = getBirthdayStatus();
-        const bdayCard = document.getElementById('birthdayCard');
-        const bdayText = document.getElementById('birthdayText');
-        bdayCard.classList.remove('today');
-        if (bday.type === 'today') {
-            bdayText.textContent = 'Happy Birthday 🎉';
-            bdayCard.classList.add('today');
-            triggerBirthdayConfetti();
-        } else if (bday.type === 'upcoming') bdayText.textContent = `剩余 ${bday.remaining} 天`;
-        else bdayText.textContent = 'See you next year ✨';
-        // 签到按钮
-        const btn = document.getElementById('checkinBtn');
-        if (hasCheckedInToday()) { btn.disabled = true; btn.innerHTML = '✓ Today\'s Leaf Added<br><small>See you tomorrow.</small>'; }
-        else { btn.disabled = false; btn.innerHTML = '🍀 Add Today\'s Leaf'; }
-        document.getElementById('diaryInput').value = local.diary[getTodayStr()] || '';
-        renderCanvas(count);
-        renderMiniCalendar();
-        applyBackground(local.bg);
+        try {
+            const total = daysSinceStart(); const count = local.checkin_dates.length;
+            // 天数
+            document.getElementById('dayNumber').textContent = total;
+            document.getElementById('dayLabelNum').textContent = total;
+            // 版头
+            document.getElementById('nickDisplay').textContent = local.profile.nickname || 'Growing Together';
+            document.getElementById('subDisplay').textContent = local.profile.subtitle || 'One leaf a day.';
+            // 进度条
+            const percent = total>0 ? Math.min(100, (count/total)*100) : 0;
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = `${count} / ${total} 天`;
+            // 生日
+            const bday = getBirthdayStatus();
+            const bdayCard = document.getElementById('birthdayCard');
+            const bdayText = document.getElementById('birthdayText');
+            bdayCard.classList.remove('today');
+            if (bday.type === 'today') {
+                bdayText.textContent = 'Happy Birthday 🎉';
+                bdayCard.classList.add('today');
+                triggerBirthdayConfetti();
+            } else if (bday.type === 'upcoming') bdayText.textContent = `剩余 ${bday.remaining} 天`;
+            else bdayText.textContent = 'See you next year ✨';
+            // 签到按钮
+            const btn = document.getElementById('checkinBtn');
+            if (hasCheckedInToday()) { btn.disabled = true; btn.innerHTML = '✓ Today\'s Leaf Added<br><small>See you tomorrow.</small>'; }
+            else { btn.disabled = false; btn.innerHTML = '🍀 Add Today\'s Leaf'; }
+            document.getElementById('diaryInput').value = local.diary[getTodayStr()] || '';
+            renderCanvas(count);
+            renderMiniCalendar();
+            applyBackground(local.bg);
+        } catch (err) {
+            console.error('updateUI 执行错误:', err);
+        }
     }
 
     // 动效
@@ -521,7 +531,8 @@
         try {
             await signIn(email, pw);
             authPanel.classList.add('hidden'); appPanel.classList.remove('hidden');
-            await loadCloudData(); await updateUI();
+            await loadCloudData();
+            await updateUI();
         } catch (e) { authMsg.textContent = e.message; }
     });
     document.getElementById('signUpBtn').addEventListener('click', async () => {
@@ -532,49 +543,49 @@
         catch (e) { authMsg.textContent = e.message; }
     });
     document.getElementById('checkinBtn').addEventListener('click', doCheckin);
+
+    // ★ 退出登录：确保界面立即切换
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-    try {
-        await db.auth.signOut();
-    } catch (e) {
-        console.error('退出登录失败', e);
-    }
-    // signOut 成功后会自动触发 onAuthStateChange，这里手动再设置一遍，确保面板切换
-    appPanel.classList.add('hidden');
-    authPanel.classList.remove('hidden');
-});
-
-
-    db.auth.onAuthStateChange(async (event, session) => {
-    if (session) {
-        authPanel.classList.add('hidden');
-        appPanel.classList.remove('hidden');
         try {
-            await loadCloudData();
+            await db.auth.signOut();
         } catch (e) {
-            console.warn('刷新加载数据失败', e);
+            console.error('退出登录失败', e);
         }
-        // 无论加载成功与否，都强制更新界面
-        updateUI();
-    } else {
         appPanel.classList.add('hidden');
         authPanel.classList.remove('hidden');
-    }
-});
+    });
 
-    (async () => {
-    const { data: { session } } = await db.auth.getSession();
-    if (session) {
-        authPanel.classList.add('hidden');
-        appPanel.classList.remove('hidden');
-        try {
-            await loadCloudData();
-        } catch (e) {
-            console.warn('初始化加载数据失败', e);
+    // ★ 监听登录状态变化，刷新时自动恢复
+    db.auth.onAuthStateChange(async (event, session) => {
+        if (session) {
+            authPanel.classList.add('hidden');
+            appPanel.classList.remove('hidden');
+            try {
+                await loadCloudData();
+            } catch (e) {
+                console.warn('刷新加载数据失败', e);
+            }
+            await updateUI();
+        } else {
+            appPanel.classList.add('hidden');
+            authPanel.classList.remove('hidden');
         }
-        updateUI();
-    }
-})();
-    
+    });
+
+    // ★ 初始化（已登录则自动进入）
+    (async () => {
+        const { data: { session } } = await db.auth.getSession();
+        if (session) {
+            authPanel.classList.add('hidden');
+            appPanel.classList.remove('hidden');
+            try {
+                await loadCloudData();
+            } catch (e) {
+                console.warn('初始化加载数据失败', e);
+            }
+            await updateUI();
+        }
+    })();
 </script>
 </body>
 </html>
