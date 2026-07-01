@@ -118,6 +118,11 @@
             <div class="msg">🍀 Day <span id="dayLabelNum">—</span></div>
             <div style="font-size:0.8rem; color:var(--text-muted);">Growing since June 29, 2026</div>
         </div>
+        <div class="card" id="specialTodayCard" style="display:none;">
+    <p style="font-size:0.9rem; color:var(--sage-deep); text-align:center;">
+        📖 <span id="specialTodayText"></span>
+    </p>
+</div>
         <div class="card" id="birthdayCard"><span>🎂</span> <span id="birthdayText"></span></div>
         <div class="card">
             <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
@@ -314,6 +319,16 @@
         document.getElementById('diaryInput').value = local.diary[getTodayStr()] || '';
         renderCanvas(count);
         renderMiniCalendar();
+        // 显示当天的特别寄语
+const specialTodayCard = document.getElementById('specialTodayCard');
+const specialTodayText = document.getElementById('specialTodayText');
+const todayStr = getTodayStr();
+if (local.specials[todayStr]) {
+    specialTodayText.textContent = local.specials[todayStr];
+    specialTodayCard.style.display = 'block';
+} else {
+    specialTodayCard.style.display = 'none';
+}
         applyBackground(local.bg);
     }
 
