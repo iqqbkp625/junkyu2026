@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍀 Growing Together — 陪伴日记</title>
+    <style>
+        :root {
+            --bg: #fefaf5;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --sage: #b5c9b0;
+            --sage-deep: #7d9b76;
+            --sage-light: #d5e4d1;
+            --warm-beige: #e8d5c4;
+            --text: #5c4a3a;
+            --text-light: #8b7b6b;
+            --text-muted: #a89888;
+            --shadow-card: 0 4px 24px rgba(120, 100, 80, 0.08);
+            --radius-lg: 28px;
+            --radius-md: 18px;
+            --font-main: 'Georgia', 'Times New Roman', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', serif;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+        body {
+            background-color: var(--bg);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: var(--font-main);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem 3rem;
+            line-height: 1.6;
+            transition: background 0.5s ease;
+            backdrop-filter: blur(0px);
+        }
+        body.custom-bg {
+            backdrop-filter: blur(3px);
+            background-color: rgba(255, 250, 245, 0.65);
+        }
+        .main-container {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        /* 卡片通用 */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 1.6rem;
+            box-shadow: var(--shadow-card);
+            text-align: center;
+            width: 100%;
+            border: 1px solid rgba(181, 201, 176, 0.25);
+            position: relative;
+            transition: var(--transition);
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, var(--sage-light), var(--sage), var(--warm-beige));
+            border-radius: 4px 4px 0 0;
+            opacity: 0.6;
+        }
+
+        /* 头部 */
+        .header { text-align: center; }
+        .header h1 { font-size: 1.9rem; font-weight: 400; color: var(--sage-deep); }
+        .header .subtitle { font-size: 0.9rem; color: var(--text-muted); font-style: italic; margin-top: 0.2rem; }
+
+        /* 天数卡片 */
+        .day-card .day-number { font-size: 4.5rem; font-weight: 400; color: var(--sage-deep); line-height: 1; }
+        .day-card .day-label { font-size: 1rem; color: var(--text-light); margin-top: 0.2rem; }
+        .day-card .day-since { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+
+        /* 生日卡片 */
+        .birthday-card {
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            padding: 1rem 1.4rem; font-size: 0.95rem; color: var(--text-light);
+        }
+        .birthday-card.birthday-today {
+            background: linear-gradient(135deg, #fef9f5, #fff5ec);
+            border-color: rgba(220, 170, 130, 0.5);
+            animation: birthdayGlow 2.5s ease-in-out infinite;
+        }
+        @keyframes birthdayGlow {
+            0%, 100% { box-shadow: 0 4px 24px rgba(120, 100, 80, 0.1); }
+            50% { box-shadow: 0 4px 32px rgba(200, 150, 100, 0.2), 0 0 0 4px rgba(255, 200, 150, 0.1); }
+        }
+
+        /* 进度条 */
+        .progress-label { font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem; }
+        .progress-bar-bg { background: #f0e8df; border-radius: 20px; height: 10px; overflow: hidden; margin: 0.4rem 0; }
+        .progress-bar-fill { background: linear-gradient(90deg, var(--sage-light), var(--sage-deep)); height: 100%; width: 0%; border-radius: 20px; transition: width 0.6s ease; }
+        .progress-text { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* 画布 */
+        .canvas-container { position: relative; width: 100%; display: flex; justify-content: center; }
+        .canvas-container::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 260px; height: 260px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(181, 201, 176, 0.1) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+            animation: haloPulse 8s ease-in-out infinite;
+        }
+        @keyframes haloPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+            50% { transform: translate(-50%, -50%) scale(1.12); opacity: 0.4; }
+        }
+        canvas { position: relative; z-index: 1; display: block; width: 250px; height: 300px; border-radius: 20px; }
+        canvas.bounce-plant { animation: plantBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes plantBounce {
+            0% { transform: scale(1); } 30% { transform: scale(1.05); } 55% { transform: scale(0.96); } 75% { transform: scale(1.02); } 100% { transform: scale(1); }
+        }
+        .stage-name { font-size: 0.85rem; color: var(--text-light); text-align: center; margin-top: 0.3rem; font-style: italic; }
+
+        /* 签到按钮 */
+        .checkin-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+            padding: 0.9rem 2.2rem; font-size: 1rem; font-family: var(--font-main);
+            color: #fff; background: var(--sage-deep); border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 3px 14px rgba(125, 155, 118, 0.3);
+            transition: all 0.35s ease; user-select: none;
+        }
+        .checkin-btn:disabled { background: #c4d4c0; cursor: not-allowed; color: #e8efe6; }
+
+        /* 每日寄语 & 日记 */
+        .daily-message, .special-today {
+            font-size: 0.9rem; color: var(--text-muted); font-style: italic;
+            text-align: center; min-height: 1.5em; opacity: 0; transition: opacity 0.5s ease;
+        }
+        .visible { opacity: 1 !important; }
+
+        .diary-section { width: 100%; margin-top: 0.5rem; display: none; }
+        .diary-section.active { display: block; }
+        .diary-input {
+            width: 100%; padding: 0.8rem; border-radius: 16px; border: 1px solid #e0d6cc;
+            background: rgba(255,255,255,0.7); font-family: var(--font-main); resize: vertical;
+            margin-top: 0.5rem; font-size: 0.9rem;
+        }
+        .diary-save-btn {
+            margin-top: 0.5rem; padding: 0.5rem 1.5rem; background: var(--sage-deep);
+            color: white; border: none; border-radius: 30px; cursor: pointer; font-family: var(--font-main);
+            font-size: 0.85rem; transition: 0.2s;
+        }
+        .diary-save-btn:hover { background: #6b8564; }
+        .diary-history-btn {
+            background: none; border: none; color: var(--sage-deep); cursor: pointer;
+            font-size: 0.8rem; text-decoration: underline; margin-left: 0.5rem;
+        }
+
+        /* 迷你日历 */
+        .mini-calendar {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+            padding: 0.5rem 0; font-size: 0.75rem; color: var(--text-light);
+        }
+        .mini-calendar .day-cell {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; background: rgba(255,250,245,0.6);
+        }
+        .mini-calendar .day-cell.checked { background: #d5e4d1; color: #4a6742; font-weight: bold; }
+        .mini-calendar .day-cell.today { border: 2px solid var(--sage-deep); }
+
+        /* 页脚 */
+        .footer { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.8rem; opacity: 0.7; font-style: italic; }
+
+        /* 管理面板 */
+        .admin-trigger {
+            position: fixed; bottom: 1.2rem; right: 1.2rem; font-size: 1.4rem;
+            opacity: 0.4; cursor: pointer; z-index: 200; background: none; border: none;
+        }
+        .admin-trigger:hover { opacity: 0.8; }
+        .admin-panel {
+            position: fixed; top: 5%; left: 5%; right: 5%; bottom: 5%;
+            background: rgba(255, 253, 249, 0.95); backdrop-filter: blur(20px);
+            border-radius: 28px; box-shadow: 0 25px 60px rgba(80, 60, 40, 0.25);
+            z-index: 300; display: none; flex-direction: column; padding: 1.8rem;
+            overflow-y: auto; border: 1px solid rgba(181, 201, 176, 0.4);
+        }
+        .admin-panel-header { display: flex; justify-content: space-between; margin-bottom: 1.2rem; }
+        .admin-panel-header span { font-weight: 500; color: var(--sage-deep); font-size: 1.2rem; }
+        #closeAdminBtn { background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--text-light); }
+        .admin-section { margin-bottom: 1.5rem; }
+        .admin-section h3 { font-size: 0.9rem; color: var(--sage-deep); margin-bottom: 0.6rem; }
+        .bg-options { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .bg-option {
+            width: 45px; height: 45px; border-radius: 12px; cursor: pointer; border: 2px solid transparent;
+            transition: 0.2s; background-size: cover;
+        }
+        .bg-option.selected { border-color: var(--sage-deep); }
+        .admin-btn {
+            padding: 0.5rem 1.2rem; background: var(--sage-deep); color: white;
+            border: none; border-radius: 30px; cursor: pointer; font-size: 0.8rem; margin-top: 0.3rem;
+        }
+        .admin-input {
+            padding: 0.5rem; border-radius: 12px; border: 1px solid #ddd; width: 100%; margin-bottom: 0.5rem;
+            font-family: var(--font-main);
+        }
+        .special-item { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid #f0e8df; }
+        .special-item button { background: none; border: none; color: #c44; cursor: pointer; }
+
+        @keyframes confettiFall {
+            0% { opacity: 1; transform: translateY(0) rotate(0); }
+            100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+        }
+        @media (max-width: 480px) {
+            .day-card .day-number { font-size: 3.5rem; }
+            canvas { width: 220px; height: 264px; }
+        }
+    </style>
+</head>
+<body id="bodyEl">
+    <div class="main-container">
+        <header class="header">
+            <h1>🍀 Growing Together</h1>
+            <p class="subtitle" id="customSubtitle">One leaf a day. We'll be here, no matter how long it takes.</p>
+        </header>
+
+        <div class="card day-card" id="dayCard">
+            <div class="day-number" id="dayNumber">—</div>
+            <div class="day-label">🍀 Day <span id="dayLabelNum">—</span></div>
+            <div class="day-since">Growing since June 29, 2026</div>
+        </div>
+
+        <div class="card birthday-card" id="birthdayCard">
+            <span>🎂</span> <span id="birthdayText">Loading…</span>
+        </div>
+
+        <!-- 签到日历 -->
+        <div class="card" style="padding: 1rem 1.4rem;">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:0.2rem;">📅 本月陪伴日历</div>
+            <div class="mini-calendar" id="miniCalendar"></div>
+        </div>
+
+        <div class="card progress-card">
+            <div class="progress-label">🌸 陪伴进度</div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+            <div class="progress-text" id="progressText">—</div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="cloverCanvas" width="500" height="600"></canvas>
+        </div>
+        <p class="stage-name" id="stageName">🌱 等待第一片叶子</p>
+
+        <button class="checkin-btn" id="checkinBtn">🍀 Add Today's Leaf</button>
+
+        <!-- 每日日记区域 -->
+        <div class="diary-section" id="diarySection">
+            <textarea class="diary-input" id="diaryInput" placeholder="今天想对你说的话…" rows="3"></textarea>
+            <button class="diary-save-btn" id="diarySaveBtn">💌 保存今天的小记</button>
+            <button class="diary-history-btn" id="diaryHistoryBtn">📖 查看历史日记</button>
+        </div>
+
+        <p class="daily-message" id="dailyMessage"></p>
+        <p class="special-today" id="specialToday"></p>
+        <footer class="footer">Growing together, one leaf at a time. 🤍</footer>
+    </div>
+
+    <!-- 管理面板入口 -->
+    <button class="admin-trigger" id="adminTrigger" title="管理">⚙️</button>
+
+    <!-- 管理面板 -->
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-panel-header">
+            <span>🍀 设置与寄语管理</span>
+            <button id="closeAdminBtn">✕</button>
+        </div>
+        <div class="admin-section">
+            <h3>🎨 自定义背景</h3>
+            <div class="bg-options" id="bgOptions">
+                <div class="bg-option" style="background: #fefaf5;" data-bg="default"></div>
+                <div class="bg-option" style="background: linear-gradient(135deg, #f5efe6, #e8dccf);" data-bg="warm"></div>
+                <div class="bg-option" style="background: linear-gradient(135deg, #e9f0e5, #d5e4d1);" data-bg="forest"></div>
+                <div class="bg-option" style="background: linear-gradient(135deg, #f9f3f0, #fce4d6);" data-bg="peach"></div>
+                <div class="bg-option" style="background: #fdfdf0;" data-bg="cream"></div>
+            </div>
+            <label for="bgUpload" class="admin-btn" style="display:inline-block; margin-top:0.4rem;">📁 上传背景图</label>
+            <input type="file" id="bgUpload" accept="image/*" style="display:none;">
+            <button class="admin-btn" id="resetBgBtn">🔄 恢复默认</button>
+        </div>
+        <div class="admin-section">
+            <h3>💬 自定义问候语</h3>
+            <input type="text" class="admin-input" id="nicknameInput" placeholder="输入昵称（如 Junkyu）">
+            <input type="text" class="admin-input" id="subtitleInput" placeholder="自定义副标题">
+            <button class="admin-btn" id="saveProfileBtn">保存</button>
+        </div>
+        <div class="admin-section">
+            <h3>📖 特别寄语管理（那年今日）</h3>
+            <div class="admin-list" id="adminList"></div>
+            <input type="date" class="admin-input" id="specialDate">
+            <input type="text" class="admin-input" id="specialMessage" placeholder="输入这一天的寄语...">
+            <button class="admin-btn" id="addSpecialBtn">添加</button>
+        </div>
+    </div>
+
+    <!-- 历史日记弹窗 -->
+    <div class="admin-panel" id="diaryHistoryPanel" style="display:none; z-index:400;">
+        <div class="admin-panel-header">
+            <span>📖 历史日记</span>
+            <button id="closeDiaryHistoryBtn">✕</button>
+        </div>
+        <div id="diaryHistoryContent" style="overflow-y:auto; flex:1;"></div>
+    </div>
+
+    <script>
+        (function() {
+            // ========== 配置 ==========
+            const START_DATE = new Date(2026, 5, 29);
+            const BIRTHDAY_MONTH = 9;
+            const BIRTHDAY_DAY = 9;
+            const CHECKIN_KEY = 'junkyu_checkin_dates';
+            const DIARY_KEY = 'junkyu_diary';
+            const SPECIAL_KEY = 'junkyu_special_messages';
+            const PROFILE_KEY = 'junkyu_profile';
+            const BG_KEY = 'junkyu_bg';
+            const ADMIN_PASSWORD = 'your_secret_2026';
+
+            // ========== DOM 元素 ==========
+            const bodyEl = document.getElementById('bodyEl');
+            const dayNumberEl = document.getElementById('dayNumber');
+            const dayLabelNumEl = document.getElementById('dayLabelNum');
+            const birthdayTextEl = document.getElementById('birthdayText');
+            const birthdayCardEl = document.getElementById('birthdayCard');
+            const checkinBtn = document.getElementById('checkinBtn');
+            const dailyMessageEl = document.getElementById('dailyMessage');
+            const specialTodayEl = document.getElementById('specialToday');
+            const stageNameEl = document.getElementById('stageName');
+            const progressFillEl = document.getElementById('progressFill');
+            const progressTextEl = document.getElementById('progressText');
+            const canvas = document.getElementById('cloverCanvas');
+            const ctx = canvas.getContext('2d');
+            const diarySection = document.getElementById('diarySection');
+            const diaryInput = document.getElementById('diaryInput');
+            const diarySaveBtn = document.getElementById('diarySaveBtn');
+            const diaryHistoryBtn = document.getElementById('diaryHistoryBtn');
+            const customSubtitle = document.getElementById('customSubtitle');
+            const miniCalendarEl = document.getElementById('miniCalendar');
+
+            // 每日寄语库
+            const dailyMessages = [
+                'Take your time.', "We'll be here.", 'Hope grows quietly.', 'One more leaf today.',
+                'Growing together.', 'Rest well.', 'Another little bit of luck.', 'Every day counts.',
+                'Until we meet again.', 'A little luck, every single day.', 'Quietly rooting for you.',
+                'Small steps, steady growth.', "Today's leaf of luck is here.", 'Patience is a form of love.',
+                "You're doing great.", 'One day at a time.', "A gentle reminder: you're loved.",
+                'Luck grows in quiet moments.', "Here's to today.", 'Steady and true.', 'Another day, another leaf.',
+                'Small joys add up.', 'Keep going, gently.', 'Today matters.', 'A tiny bit of magic, just for today.',
+                'You are not alone.', 'Quiet strength.', 'Bloom at your own pace.', 'Every leaf tells a story.',
+                'Lucky to have you.', 'Softly, steadily.', 'One leaf closer.', 'The garden grows with you.',
+                'Today is a gift.', 'Warm thoughts, always.'
+            ];
+
+            // ========== 工具函数 ==========
+            function getTodayStr() {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            }
+            function daysSinceStart() {
+                const today = new Date(); today.setHours(0,0,0,0);
+                const start = new Date(START_DATE); start.setHours(0,0,0,0);
+                return Math.max(1, Math.floor((today - start)/86400000) + 1);
+            }
+            function getCheckinDates() {
+                try { return JSON.parse(localStorage.getItem(CHECKIN_KEY)) || []; } catch { return []; }
+            }
+            function saveCheckinDates(dates) { localStorage.setItem(CHECKIN_KEY, JSON.stringify(dates)); }
+            function hasCheckedInToday() { return getCheckinDates().includes(getTodayStr()); }
+            function getBirthdayStatus() {
+                const now = new Date(); now.setHours(0,0,0,0);
+                const year = now.getFullYear();
+                const bday = new Date(year, BIRTHDAY_MONTH-1, BIRTHDAY_DAY); bday.setHours(0,0,0,0);
+                if (now.getTime() === bday.getTime()) return { type: 'today' };
+                if (now < bday) return { type: 'upcoming', remaining: Math.ceil((bday - now)/86400000) };
+                return { type: 'passed' };
+            }
+            function getSpecialMessages() {
+                try { return JSON.parse(localStorage.getItem(SPECIAL_KEY)) || {}; } catch { return {}; }
+            }
+            function saveSpecialMessages(msgs) { localStorage.setItem(SPECIAL_KEY, JSON.stringify(msgs)); }
+            function getDiary() {
+                try { return JSON.parse(localStorage.getItem(DIARY_KEY)) || {}; } catch { return {}; }
+            }
+            function saveDiary(diary) { localStorage.setItem(DIARY_KEY, JSON.stringify(diary)); }
+            function getProfile() {
+                try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || { nickname: '', subtitle: '' }; } catch { return { nickname: '', subtitle: '' }; }
+            }
+            function saveProfile(profile) { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
+            function getBg() {
+                return localStorage.getItem(BG_KEY) || 'default';
+            }
+            function saveBg(bg) { localStorage.setItem(BG_KEY, bg); }
+
+            // ========== 背景应用 ==========
+            function applyBackground(bg) {
+                bodyEl.classList.remove('custom-bg');
+                bodyEl.style.backgroundImage = '';
+                if (bg === 'default') { bodyEl.style.backgroundColor = '#fefaf5'; }
+                else if (bg === 'warm') { bodyEl.style.background = 'linear-gradient(135deg, #f5efe6, #e8dccf)'; }
+                else if (bg === 'forest') { bodyEl.style.background = 'linear-gradient(135deg, #e9f0e5, #d5e4d1)'; }
+                else if (bg === 'peach') { bodyEl.style.background = 'linear-gradient(135deg, #f9f3f0, #fce4d6)'; }
+                else if (bg === 'cream') { bodyEl.style.backgroundColor = '#fdfdf0'; }
+                else if (bg.startsWith('data:image')) {
+                    bodyEl.style.backgroundImage = `url(${bg})`;
+                    bodyEl.style.backgroundSize = 'cover';
+                    bodyEl.style.backgroundPosition = 'center';
+                    bodyEl.classList.add('custom-bg');
+                }
+            }
+
+            // ========== 画布绘制（三叶草生长） ==========
+            function getGrowthStage(count) {
+                if (count <= 0) return 0; if (count === 1) return 1; if (count <= 3) return 2;
+                if (count <= 7) return 3; if (count <= 14) return 4; if (count <= 25) return 5;
+                if (count <= 40) return 6; if (count <= 65) return 7; return 8;
+            }
+            const stageNames = ['🌱 等待第一片叶子','🌿 小嫩芽破土','🍀 第一片幸运叶','🍀 三叶草悄悄长大','🍀 四叶草！加倍幸运','🌿 新芽相伴','🌼 幸运草小花园','🌸 繁茂的草地','🌺 花园盛放'];
+
+            function drawLeaf(x,y,size,rot){
+                ctx.save(); ctx.translate(x,y); ctx.rotate(rot);
+                ctx.fillStyle='#7d9b76'; ctx.beginPath();
+                for(let t=0;t<=Math.PI*2;t+=0.1){
+                    let sx=16*Math.pow(Math.sin(t),3)*size;
+                    let sy=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*size;
+                    if(t===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);
+                }
+                ctx.fill(); ctx.restore();
+            }
+
+            function renderCanvas(checkinCount) {
+                ctx.clearRect(0,0,500,600);
+                const stage = getGrowthStage(checkinCount);
+                const cx = 250;
+                // 花盆
+                ctx.fillStyle = '#c4956a';
+                ctx.beginPath(); ctx.moveTo(165,395); ctx.lineTo(335,395); ctx.lineTo(310,500); ctx.lineTo(190,500); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = '#d4a574'; ctx.fillRect(155,393,190,12);
+                // 土壤
+                ctx.fillStyle = '#8b6f5e'; ctx.beginPath(); ctx.ellipse(250,403,80,12,0,0,Math.PI*2); ctx.fill();
+                if (stage === 0) {
+                    ctx.fillStyle = '#baa89a'; ctx.beginPath(); ctx.arc(250,398,5,0,Math.PI*2); ctx.fill();
+                } else if (stage === 1) {
+                    ctx.strokeStyle='#8db580'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(250,400); ctx.lineTo(250,370); ctx.stroke();
+                    ctx.fillStyle='#a8c9a0'; ctx.beginPath(); ctx.ellipse(243,372,7,4,-0.5,0,Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.ellipse(257,372,7,4,0.5,0,Math.PI*2); ctx.fill();
+                } else if (stage === 2) {
+                    ctx.strokeStyle='#8db580'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(250,400); ctx.lineTo(250,340); ctx.stroke();
+                    drawLeaf(250,340,0.6,0);
+                } else if (stage === 3) {
+                    ctx.strokeStyle='#8db580'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(250,400); ctx.lineTo(250,310); ctx.stroke();
+                    for(let i=0;i<3;i++){ drawLeaf(250,305,0.65,i*Math.PI*2/3); }
+                    ctx.fillStyle='#6a8a63'; ctx.beginPath(); ctx.arc(250,305,6,0,Math.PI*2); ctx.fill();
+                } else if (stage === 4) {
+                    ctx.strokeStyle='#8db580'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(250,400); ctx.lineTo(250,295); ctx.stroke();
+                    for(let i=0;i<4;i++){ drawLeaf(250,290,0.7,i*Math.PI/2+Math.PI/8); }
+                    ctx.fillStyle='#6a8a63'; ctx.beginPath(); ctx.arc(250,290,6,0,Math.PI*2); ctx.fill();
+                } else if (stage >= 5) {
+                    ctx.strokeStyle='#8db580'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(250,400); ctx.lineTo(250,280); ctx.stroke();
+                    for(let i=0;i<4;i++){ drawLeaf(250,275,0.75,i*Math.PI/2+Math.PI/8); }
+                    ctx.fillStyle='#6a8a63'; ctx.beginPath(); ctx.arc(250,275,6,0,Math.PI*2); ctx.fill();
+                    if(stage>=6){ ctx.strokeStyle='#9cc090'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(230,390); ctx.lineTo(210,360); ctx.stroke(); drawLeaf(210,358,0.45,Math.PI/3); }
+                    if(stage>=7){ ctx.strokeStyle='#a0c495'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(270,390); ctx.lineTo(290,350); ctx.stroke(); drawLeaf(290,348,0.5,-Math.PI/4); }
+                }
+                stageNameEl.textContent = stageNames[stage];
+            }
+
+            // ========== 迷你日历 ==========
+            function renderMiniCalendar() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth();
+                const daysInMonth = new Date(year, month+1, 0).getDate();
+                const firstDay = new Date(year, month, 1).getDay();
+                const checked = getCheckinDates();
+                let html = '';
+                for (let i = 0; i < firstDay; i++) html += '<div></div>';
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const isChecked = checked.includes(dateStr);
+                    const isToday = (d === now.getDate());
+                    html += `<div class="day-cell${isChecked ? ' checked' : ''}${isToday ? ' today' : ''}">${d}</div>`;
+                }
+                miniCalendarEl.innerHTML = html;
+            }
+
+            // ========== UI 更新 ==========
+            function updateUI() {
+                const totalDays = daysSinceStart();
+                const checkinDates = getCheckinDates();
+                const checkinCount = checkinDates.length;
+                const todayChecked = hasCheckedInToday();
+                const bday = getBirthdayStatus();
+                const profile = getProfile();
+
+                dayNumberEl.textContent = totalDays;
+                dayLabelNumEl.textContent = totalDays;
+                customSubtitle.textContent = profile.subtitle || 'One leaf a day. We\'ll be here, no matter how long it takes.';
+
+                birthdayCardEl.classList.remove('birthday-today');
+                if (bday.type === 'today') {
+                    birthdayTextEl.textContent = 'Happy Birthday 🎉';
+                    birthdayCardEl.classList.add('birthday-today');
+                } else if (bday.type === 'upcoming') {
+                    birthdayTextEl.textContent = `Remaining ${bday.remaining} day${bday.remaining>1?'s':''}`;
+                } else {
+                    birthdayTextEl.textContent = 'See you next year ✨';
+                }
+
+                if (todayChecked) {
+                    checkinBtn.disabled = true;
+                    checkinBtn.innerHTML = '✓ Today\'s Leaf Added<br><small style="font-size:0.7em;">See you tomorrow.</small>';
+                    diarySection.classList.add('active');
+                } else {
+                    checkinBtn.disabled = false;
+                    checkinBtn.innerHTML = '🍀 Add Today\'s Leaf';
+                    diarySection.classList.remove('active');
+                }
+
+                const percent = totalDays>0 ? Math.min(100, (checkinCount/totalDays)*100) : 0;
+                progressFillEl.style.width = percent + '%';
+                progressTextEl.textContent = `${checkinCount} / ${totalDays} 天 · 坚持就是幸运`;
+
+                const specials = getSpecialMessages();
+                const todayStr = getTodayStr();
+                specialTodayEl.textContent = specials[todayStr] ? '📖 那年今日：' + specials[todayStr] : '';
+                specialTodayEl.classList.toggle('visible', !!specials[todayStr]);
+
+                // 加载今日日记
+                const diary = getDiary();
+                if (diary[todayStr]) {
+                    diaryInput.value = diary[todayStr];
+                } else {
+                    diaryInput.value = '';
+                }
+
+                renderCanvas(checkinCount);
+                renderMiniCalendar();
+                applyStoredBackground();
+                updateProfileDisplay();
+            }
+
+            function applyStoredBackground() {
+                applyBackground(getBg());
+            }
+
+            function updateProfileDisplay() {
+                const profile = getProfile();
+                if (profile.nickname) {
+                    document.querySelector('.header h1').innerHTML = `🍀 ${profile.nickname} · Growing Together`;
+                }
+            }
+
+            // ========== 签到 ==========
+            function doCheckin() {
+                if (hasCheckedInToday()) return;
+                const dates = getCheckinDates();
+                dates.push(getTodayStr());
+                saveCheckinDates(dates);
+                updateUI();
+                canvas.classList.remove('bounce-plant'); void canvas.offsetWidth; canvas.classList.add('bounce-plant');
+                setTimeout(()=>canvas.classList.remove('bounce-plant'), 700);
+                if (getBirthdayStatus().type === 'today') {
+                    for(let i=0;i<40;i++){ /* 彩带动画省略，可保留 */ }
+                }
+            }
+
+            // ========== 日记保存 ==========
+            diarySaveBtn.addEventListener('click', () => {
+                const diary = getDiary();
+                diary[getTodayStr()] = diaryInput.value;
+                saveDiary(diary);
+                alert('日记已保存 💌');
+            });
+
+            diaryHistoryBtn.addEventListener('click', () => {
+                const diary = getDiary();
+                const panel = document.getElementById('diaryHistoryPanel');
+                const content = document.getElementById('diaryHistoryContent');
+                let html = '';
+                const sorted = Object.keys(diary).sort().reverse();
+                if (sorted.length === 0) html = '<p style="color:var(--text-muted);">还没有写过日记。</p>';
+                else {
+                    sorted.forEach(date => {
+                        html += `<div style="margin-bottom:1rem; padding:0.8rem; background:rgba(255,255,255,0.7); border-radius:16px;">
+                            <strong>${date}</strong><p style="margin-top:0.3rem;">${diary[date]}</p>
+                        </div>`;
+                    });
+                }
+                content.innerHTML = html;
+                panel.style.display = 'flex';
+            });
+            document.getElementById('closeDiaryHistoryBtn').addEventListener('click', () => {
+                document.getElementById('diaryHistoryPanel').style.display = 'none';
+            });
+
+            // ========== 管理面板 ==========
+            document.getElementById('adminTrigger').addEventListener('click', () => {
+                const pwd = prompt('请输入管理密码');
+                if (pwd === ADMIN_PASSWORD) {
+                    document.getElementById('adminPanel').style.display = 'flex';
+                    renderAdminList();
+                    document.getElementById('nicknameInput').value = getProfile().nickname;
+                    document.getElementById('subtitleInput').value = getProfile().subtitle;
+                } else if (pwd !== null) alert('密码错误');
+            });
+            document.getElementById('closeAdminBtn').addEventListener('click', () => {
+                document.getElementById('adminPanel').style.display = 'none';
+            });
+
+            function renderAdminList() {
+                const msgs = getSpecialMessages();
+                const list = document.getElementById('adminList');
+                list.innerHTML = Object.entries(msgs).map(([date,msg]) => `
+                    <div class="special-item"><span><strong>${date}</strong> — ${msg}</span>
+                    <button data-date="${date}" class="del-special">🗑️</button></div>
+                `).join('');
+                document.querySelectorAll('.del-special').forEach(btn => {
+                    btn.onclick = () => {
+                        const date = btn.dataset.date;
+                        const msgs = getSpecialMessages();
+                        delete msgs[date];
+                        saveSpecialMessages(msgs);
+                        renderAdminList();
+                        updateUI();
+                    };
+                });
+            }
+
+            document.getElementById('addSpecialBtn').addEventListener('click', () => {
+                const date = document.getElementById('specialDate').value;
+                const msg = document.getElementById('specialMessage').value.trim();
+                if (!date || !msg) return alert('请填写日期和寄语');
+                const msgs = getSpecialMessages();
+                msgs[date] = msg;
+                saveSpecialMessages(msgs);
+                renderAdminList();
+                updateUI();
+            });
+
+            document.getElementById('saveProfileBtn').addEventListener('click', () => {
+                const nickname = document.getElementById('nicknameInput').value.trim();
+                const subtitle = document.getElementById('subtitleInput').value.trim();
+                saveProfile({ nickname, subtitle });
+                updateUI();
+                alert('个人信息已更新');
+            });
+
+            // 背景切换
+            document.querySelectorAll('.bg-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    const bg = opt.dataset.bg;
+                    saveBg(bg);
+                    applyBackground(bg);
+                    document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                });
+            });
+
+            document.getElementById('bgUpload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result;
+                    saveBg(base64);
+                    applyBackground(base64);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            document.getElementById('resetBgBtn').addEventListener('click', () => {
+                saveBg('default');
+                applyBackground('default');
+                document.querySelectorAll('.bg-option').forEach(o => o.classList.remove('selected'));
+                document.querySelector('[data-bg="default"]').classList.add('selected');
+            });
+
+            // 初始化时选中当前背景
+            function setSelectedBg() {
+                const current = getBg();
+                document.querySelectorAll('.bg-option').forEach(o => {
+                    o.classList.toggle('selected', o.dataset.bg === current);
+                });
+            }
+
+            // ========== 启动 ==========
+            checkinBtn.addEventListener('click', doCheckin);
+            window.addEventListener('resize', () => renderCanvas(getCheckinDates().length));
+            applyStoredBackground();
+            setSelectedBg();
+            updateUI();
+        })();
+    </script>
+</body>
+</html>
