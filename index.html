@@ -533,22 +533,28 @@
     });
     document.getElementById('checkinBtn').addEventListener('click', doCheckin);
     document.getElementById('logoutBtn').addEventListener('click', async () => {
+    try {
         await db.auth.signOut();
-        appPanel.classList.add('hidden'); authPanel.classList.remove('hidden');
-    });
+    } catch (e) {
+        console.error('退出登录失败', e);
+    }
+    // signOut 成功后会自动触发 onAuthStateChange，这里手动再设置一遍，确保面板切换
+    appPanel.classList.add('hidden');
+    authPanel.classList.remove('hidden');
+});
 
 
     db.auth.onAuthStateChange(async (event, session) => {
-    console.log('认证状态变化:', event, session?.user?.email);
     if (session) {
         authPanel.classList.add('hidden');
         appPanel.classList.remove('hidden');
         try {
             await loadCloudData();
         } catch (e) {
-            console.warn('状态变化时加载数据失败', e);
+            console.warn('刷新加载数据失败', e);
         }
-        await updateUI();
+        // 无论加载成功与否，都强制更新界面
+        updateUI();
     } else {
         appPanel.classList.add('hidden');
         authPanel.classList.remove('hidden');
@@ -556,25 +562,16 @@
 });
 
     (async () => {
-    try {
-        const { data: { session } } = await db.auth.getSession();
-        if (session) {
-            console.log('初始化：已登录', session.user.email);
-            authPanel.classList.add('hidden');
-            appPanel.classList.remove('hidden');
-            try {
-                await loadCloudData();
-            } catch (e) {
-                console.warn('初始化加载云端数据失败', e);
-            }
-            await updateUI();
-        } else {
-            console.log('初始化：未登录，显示登录面板');
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
+        authPanel.classList.add('hidden');
+        appPanel.classList.remove('hidden');
+        try {
+            await loadCloudData();
+        } catch (e) {
+            console.warn('初始化加载数据失败', e);
         }
-    } catch (e) {
-        console.error('初始化失败', e);
-        // 即使出错也要显示登录面板
-        authPanel.classList.remove('hidden');
+        updateUI();
     }
 })();
     
